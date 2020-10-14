@@ -26,12 +26,26 @@ class GetData:
         names = names_df['NAMES'].values.tolist()
         self.stocks_dict = {name: [] for name in names}
 
+    def convert_name(self, name):
+        """
+        Converts a string to an acceptable field name for sqlite.
+        """
+        if name[0].isdigit():
+            name = '_' + name
+        name = ''.join([letter if letter.isalnum() or letter ==
+                        '_' else '_' for letter in name])
+        return name
+
     def initialise_db(self):
         """
         Connect to the database and create the table.
         """
         self.conn = sqlite3.connect(stocks_db)
         self.cur = self.conn.cursor()
+        for name in self.stocks_dict.keys():
+            table_name = self.convert_name(name)
+            query = f"CREATE TABLE IF NOT EXISTS {table_name} (date TEXT UNIQUE, avgn REAL, avgk REAL, error_message INT)"
+            self.cur.execute(query)
 
     def get_url(self, date_obj):
         """
@@ -60,22 +74,30 @@ class GetData:
         """
         url = self.get_url(date_obj)
         stocks_df = pd.read_csv(url, sep=r'\s*,\s*', engine='python')
-        print(stocks_df)
+        for name in self.stocks_dict.keys():  # get data for the stocks
+            pass
 
     def get_data(self):
         """
         Driver function to fetch data and store it in the stocks_dict.
         """
+        first = True
+        cur_date = date.today()
         for day in range(self.num_days):
             # since yesterday's data is available
-            cur_date = date.today() - timedelta(days=1 + day)
+            cur_date = cur_date - timedelta(days=1)
             if cur_date.weekday() in [5, 6] or not self.get_valid(cur_date):
                 continue
             else:
-                counter = 0
-                while counter < self.n:  # n data points are collected
+                if first:  # after first time only 1 data point is collected
+                    counter = 0
+                    while counter < self.n:  # n data points are collected
+                        if self.get_valid(cur_date):
+                            self.pd_parse_data(cur_date)
+                            counter += 1
+                        cur_date = cur_date - timedelta(days=1)
+                else:
                     self.pd_parse_data(cur_date)
-                    counter += 1
 
 
 if __name__ == '__main__':
