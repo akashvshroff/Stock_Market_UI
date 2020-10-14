@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import date, timedelta, datetime
 import sqlite3
 from file_paths import *
+from pprint import pprint
 
 
 class GetData:
@@ -14,6 +15,7 @@ class GetData:
         self.n = n  # number of days for primary average
         self.k = k  # number of days for secondary average
         self.stocks_dict = {}  # stock name -> daily value list
+        self.dates_used = []  # dates for which data has been used
         self.get_stock_names()
         self.initialise_db()
         self.get_data()
@@ -63,7 +65,9 @@ class GetData:
         Checks if a url is valid, i.e doesn't return an error and returns bool
         """
         url = self.get_url(date_obj)
-        response = requests.get(url)
+        response = requests.get(url, stream=True, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36"
+        })
         if response.status_code == 200:
             return True
         return False
@@ -74,8 +78,15 @@ class GetData:
         """
         url = self.get_url(date_obj)
         stocks_df = pd.read_csv(url, sep=r'\s*,\s*', engine='python')
+        stocks_df = stocks_df[stocks_df['SERIES'] == 'EQ']
+        stocks_df = stocks_df[['SYMBOL', p1, p2]]
         for name in self.stocks_dict.keys():  # get data for the stocks
-            pass
+            df = stocks_df[stocks_df['SYMBOL'] == name]
+            if not df.empty:
+                v1 = df[p1].values[0]
+                v2 = df[p2].values[0]
+                self.stocks_dict[name].append(v1 * v2)
+        # pprint(self.stocks_dict)
 
     def get_data(self):
         """
@@ -83,22 +94,37 @@ class GetData:
         """
         first = True
         cur_date = date.today()
-        for day in range(self.num_days):
+        day = 0
+        while day < self.num_days:
             # since yesterday's data is available
             cur_date = cur_date - timedelta(days=1)
             if cur_date.weekday() in [5, 6] or not self.get_valid(cur_date):
                 continue
             else:
+                day += 1
                 if first:  # after first time only 1 data point is collected
+                    first = False
                     counter = 0
                     while counter < self.n:  # n data points are collected
-                        if self.get_valid(cur_date):
-                            self.pd_parse_data(cur_date)
-                            counter += 1
+                        if not cur_date.weekday() in [5, 6]:
+                            if self.get_valid(cur_date):
+                                self.dates_used.append(cur_date)
+                                self.pd_parse_data(cur_date)
+                                counter += 1
                         cur_date = cur_date - timedelta(days=1)
                 else:
+                    self.dates_used.append(cur_date)
                     self.pd_parse_data(cur_date)
+        # pprint(self.stocks_dict)
+        # pprint(self.dates_used)
+        self.store_database()
+
+    def store_database(self):
+        """
+        Store all the data collected in the database.
+        """
+        pass
 
 
 if __name__ == '__main__':
-    obj = GetData(1, 1, 1)
+    obj = GetData(10, 10, 5)
