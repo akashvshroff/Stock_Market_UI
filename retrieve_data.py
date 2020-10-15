@@ -179,8 +179,10 @@ class GetData:
             self.cur.execute(query, (iso_time, n, k, ratio, err,))
 
 
-if __name__ == '__main__':
-    num, n, k = 10, 20, 5
+def main(num, n, k, reset):
+    """
+    Driver function for the program.
+    """
     obj = GetData(num+1, n, k)
     obj.get_dates()
     workers = len(obj.stocks_dict)
@@ -190,3 +192,8 @@ if __name__ == '__main__':
     concurrent.futures.wait(futures)
     obj.store_data()
     obj.conn.close()
+
+
+if __name__ == '__main__':
+    num, n, k = 10, 20, 5
+    main(num, n, k, False)
