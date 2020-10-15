@@ -54,6 +54,10 @@ class GetData:
         """
         self.conn = sqlite3.connect(stocks_db)
         self.cur = self.conn.cursor()
+        self.cur.execute(
+            "CREATE TABLE IF NOT EXISTS info (id INTEGER PRIMARY KEY UNIQUE, n INTEGER, k INTEGER)")
+        self.cur.execute(
+            "INSERT OR REPLACE INTO info(n,k,id) VALUES (?,?,?)", (self.n, self.k, 1,))
         for name in self.stocks_dict.keys():
             table_name = self.convert_name(name)
             query = f"CREATE TABLE IF NOT EXISTS {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE, date TEXT UNIQUE, avgn REAL, avgk REAL, ratio REAL, error_message INT)"
