@@ -18,7 +18,6 @@ class GetData:
         self.dates_used = []  # dates for which data has been used
         self.get_stock_names()
         self.initialise_db()
-        self.get_data()
 
     def get_stock_names(self):
         """
@@ -117,7 +116,6 @@ class GetData:
                     self.pd_parse_data(cur_date)
         # pprint(self.stocks_dict)
         # pprint(self.dates_used)
-        self.store_database()
 
     def store_database(self):
         """
