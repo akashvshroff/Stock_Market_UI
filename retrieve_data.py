@@ -183,7 +183,7 @@ class GetData:
             self.cur.execute(query, (iso_time, n, k, ratio, err,))
 
 
-def main(num, n, k, reset):
+def main(num, n, k):
     """
     Driver function for the program.
     """
@@ -201,4 +201,4 @@ def main(num, n, k, reset):
 
 if __name__ == '__main__':
     num, n, k = 10, 20, 5
-    main(num, n, k, False)
+    main(num, n, k)
