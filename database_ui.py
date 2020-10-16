@@ -1,5 +1,6 @@
 import sqlite3
 import tkinter as tk
+from tkinter import messagebox
 from file_paths import *
 from colours import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -17,15 +18,18 @@ class DatabaseUI:
         """
         self.master = master
         self.stock_names = []
+        self.dates = []
+        self.ratios = []
         self.n, self.k = None, None
         self.conn = sqlite3.connect(stocks_db)
         self.cur = self.conn.cursor()
         self.fetch_names()
+        self.get_basic_info()
         self.tkinter_setup()
 
     def tkinter_setup(self):
         """
-        Create the tkinter window and add the various buttons. 
+        Create the tkinter window and add the various buttons.
         """
         self.master.geometry("1100x600")
         self.master.title("Database Visualiser")
@@ -36,9 +40,9 @@ class DatabaseUI:
                               height=600, bg=bg_primary)
         main_frame.pack()
 
-        title = tk.Label(self.master, text='DAILY VALUE', width=50, font=(
+        title = tk.Label(self.master, text='PLOT', width=25, font=(
             "Helvetica", 24, 'bold'), fg=text_colour, bg=bg_primary)
-        title.place(relx=0.06, rely=0.02)
+        title.place(relx=0.1, rely=0.02)
 
         # Left-Side
 
@@ -47,7 +51,7 @@ class DatabaseUI:
         self.canvas_plot.place(relx=0.04, rely=0.12)
 
         self.from_var = tk.StringVar(self.master)
-        self.from_var.set('FROM')
+        self.from_var.set('START')
         self.from_option = tk.OptionMenu(
             self.master, self.from_var, '')
         self.from_option.config(bg=bg_secondary)
@@ -65,7 +69,7 @@ class DatabaseUI:
         to.place(relx=0.25, rely=0.82)
 
         self.to_var = tk.StringVar(self.master)
-        self.to_var.set('TO')
+        self.to_var.set('END')
         self.to_option = tk.OptionMenu(self.master, self.to_var, '')
         self.to_option.config(bg=bg_secondary)
         self.to_option.config(fg=text_colour)
@@ -78,20 +82,102 @@ class DatabaseUI:
         self.to_option.configure(state='disabled')
 
         ok = tk.Button(self.master, text='OK', font=(
-            "Helvetica", 18,), bg=green, fg=text_colour)
+            "Helvetica", 18,), bg=green, fg=text_colour, command=self.show_plot)
         ok.place(relx=0.58, rely=0.80)
 
         save_plot_btn = tk.Button(self.master, text='SAVE PLOT', font=(
-            "Helvetica", 18,), bg=blue, fg=text_colour, width=22, command=self.save_plot)
+            "Helvetica", 18,), bg=blue, fg=text_colour, width=21, command=self.save_plot)
         save_plot_btn.place(relx=0.04, rely=0.9)
 
-        save_plot_btn = tk.Button(self.master, text='SAVE PLOT', font=(
-            "Helvetica", 18,), bg=blue, fg=text_colour, width=22, command=self.save_plot)
-        save_plot_btn.place(relx=0.04, rely=0.9)
+        refresh_btn = tk.Button(self.master, text='REFRESH DATA', font=(
+            "Helvetica", 18,), bg=red, fg=text_colour, width=22, command=self.refresh_data)
+        refresh_btn.place(relx=0.34, rely=0.9)
 
         # Separator
 
+        canvas_sep = tk.Canvas(
+            self.master, width=10, height=550, bg=bg_secondary, bd=0, highlightthickness=0)
+        canvas_sep.place(relx=0.65, rely=0.04)
+
         # Right Side
+
+        daily = tk.Label(self.master, text='DAILY VALUE', font=(
+            "Helvetica", 24, 'bold'), fg=text_colour, bg=bg_primary)
+        daily.place(relx=0.73, rely=0.02)
+
+        info = "View a line graph of the average of the daily values of the previous K days over the previous N days for each day for K < N.\nChoose a stock to view its graph and choose a start and end date!\nP.S - hit refresh to get data for the last 10 days."
+        info_label = tk.Message(self.master, text=info, bg=bg_primary,
+                                fg=text_colour, highlightthickness=0, font=("Helvetica", 16), width=325)
+        info_label.place(relx=0.67, rely=0.12)
+
+        stocks = tk.Label(self.master, text='STOCKS:',
+                          bg=bg_primary, fg=text_colour, font=("Helvetica", 18))
+        stocks.place(relx=0.68, rely=0.49)
+
+        self.stock_choice_var = tk.StringVar()
+        self.stock_choice_var.set("CHOOSE")
+        self.stock_choice = tk.OptionMenu(
+            self.master, self.stock_choice_var, *self.stock_names)
+        self.stock_choice.config(bg=bg_secondary)
+        self.stock_choice.config(fg=text_colour)
+        self.stock_choice.config(width=16)
+        self.stock_choice.config(activebackground=bg_secondary)
+        self.stock_choice.config(highlightthickness=0)
+        self.stock_choice.config(activeforeground=text_colour)
+        self.stock_choice.config(font=("Helvetica", 16,))
+        self.stock_choice.place(relx=0.68, rely=0.57)
+
+        stock_btn = tk.Button(self.master, text='OK',  font=(
+            "Helvetica", 16), bg=green, fg=text_colour, command=self.get_data)
+        stock_btn.place(relx=0.92, rely=0.56)
+
+        stocks = tk.Label(self.master, text='CHANGE K,N:',
+                          bg=bg_primary, fg=text_colour, font=("Helvetica", 18))
+        stocks.place(relx=0.68, rely=0.69)
+
+        change_btn = tk.Button(self.master, text='EDIT', font=(
+            "Helvetica", 16), bg=blue, fg=text_colour)
+        change_btn.place(relx=0.91, rely=0.68)
+
+        self.k_var = tk.StringVar()
+        self.k_var.set(self.k)
+
+        self.n_var = tk.StringVar()
+        self.n_var.set(self.n)
+
+        k_label = tk.Label(self.master, text='K:', font=(
+            "Helvetica", 18), bg=bg_primary, fg=text_colour)
+        k_entry = tk.Entry(self.master, textvariable=self.k_var,
+                           bg=bg_secondary, disabledbackground=bg_secondary, fg=text_colour, font=(
+                               "Helvetica", 18), width=3)
+        k_label.place(relx=0.68, rely=0.80)
+        k_entry.place(relx=0.72, rely=0.80)
+        k_entry.configure(state='disabled')
+
+        n_label = tk.Label(self.master, text='N:', font=(
+            "Helvetica", 18), bg=bg_primary, fg=text_colour)
+        n_entry = tk.Entry(self.master, textvariable=self.n_var,
+                           bg=bg_secondary, disabledbackground=bg_secondary, fg=text_colour, font=(
+                               "Helvetica", 18), width=3)
+        n_label.place(relx=0.78, rely=0.80)
+        n_entry.place(relx=0.82, rely=0.80)
+        n_entry.configure(state='disabled')
+
+        self.n_k_btn = tk.Button(self.master, text='OK', font=(
+            "Helvetica", 16), bg=green, fg=text_colour, state=tk.DISABLED, command=self.change_n_k)
+        self.n_k_btn.place(relx=0.92, rely=0.79)
+
+        quit_btn = tk.Button(self.master, text='QUIT', font=(
+            "Helvetica", 18), bg=red, fg=text_colour, width=12, command=self.quit_prg)
+        quit_btn.place(relx=0.75, rely=0.9)
+
+    def get_basic_info(self):
+        """
+        Get the k,n from the database.
+        """
+        info = self.cur.execute('SELECT k,n FROM info where id = 1')
+        row = info.fetchone()
+        self.k, self.n = row
 
     def convert_name(self, name):
         """
@@ -110,9 +196,62 @@ class DatabaseUI:
         df = pd.read_csv(share_list)
         self.stock_names = df['NAMES'].values.tolist()
 
+    def get_data(self):
+        """
+        Gets the dates and ratios for a stock.
+        """
+        if self.stock_choice_var.get() == 'CHOOSE':
+            messagebox.showerror(
+                "ERROR", "Please choose a stock from the list first.")
+            return
+        name = self.convert_name(self.stock_choice_var.get())
+        query = 'SELECT date,ratio from {}'.format(name)
+        try:
+            raw_data = self.cur.execute(query)
+            data = raw_data.fetchall()
+            for date, ratio in data:
+                formatted = '{}/{}/{}'.format(date.split('-')[::-1])
+                self.dates.append(formatted)
+                self.ratios.append(ratio)
+            self.show_dates()
+        except:
+            messagebox.showerror(
+                "ERROR", "An error occured. Please run refresh data and retry."
+            )
+
+    def show_dates(self):
+        """
+        Display the dates in the option menu.
+        """
+        pass
+
+    def show_plot(self):
+        """
+        Gets the dates and shows the plots.
+        """
+        pass
+
     def save_plot(self):
         """
         Save the plot that is currently generated.
+        """
+        pass
+
+    def refresh_data(self):
+        """
+        Fetch data for the previous 10 days and then refresh the plot.
+        """
+        pass
+
+    def change_n_k(self):
+        """
+        Change n and k and then fetch the data with the new format.
+        """
+        pass
+
+    def quit_prg(self):
+        """
+        Quits the program and closes the connection.
         """
         pass
 
