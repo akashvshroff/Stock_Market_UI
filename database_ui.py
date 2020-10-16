@@ -2,12 +2,14 @@ import sqlite3
 import tkinter as tk
 from tkinter import messagebox
 from file_paths import *
+import retrieve_data
 from colours import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.backend_bases import key_press_handler
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import pandas as pd
+import sys
 
 
 class DatabaseUI:
@@ -81,16 +83,16 @@ class DatabaseUI:
         self.to_option.place(relx=0.36, rely=0.81)
         self.to_option.configure(state='disabled')
 
-        ok = tk.Button(self.master, text='OK', font=(
-            "Helvetica", 18,), bg=green, fg=text_colour, command=self.show_plot)
-        ok.place(relx=0.58, rely=0.80)
+        self.ok = tk.Button(self.master, text='OK', font=(
+            "Helvetica", 18,), bg=green, fg=text_colour, state=tk.DISABLED, command=self.show_plot)
+        self.ok.place(relx=0.58, rely=0.80)
 
         save_plot_btn = tk.Button(self.master, text='SAVE PLOT', font=(
             "Helvetica", 18,), bg=blue, fg=text_colour, width=21, command=self.save_plot)
         save_plot_btn.place(relx=0.04, rely=0.9)
 
         refresh_btn = tk.Button(self.master, text='REFRESH DATA', font=(
-            "Helvetica", 18,), bg=red, fg=text_colour, width=22, command=self.refresh_data)
+            "Helvetica", 18,), bg=red, fg=text_colour, width=22, command=lambda: self.refresh_data("Refreshing data", self.n, self.k))
         refresh_btn.place(relx=0.34, rely=0.9)
 
         # Separator
@@ -136,7 +138,7 @@ class DatabaseUI:
         stocks.place(relx=0.68, rely=0.69)
 
         change_btn = tk.Button(self.master, text='EDIT', font=(
-            "Helvetica", 16), bg=blue, fg=text_colour)
+            "Helvetica", 16), bg=blue, fg=text_colour, command=self.enable_n_k)
         change_btn.place(relx=0.91, rely=0.68)
 
         self.k_var = tk.StringVar()
@@ -147,29 +149,29 @@ class DatabaseUI:
 
         k_label = tk.Label(self.master, text='K:', font=(
             "Helvetica", 18), bg=bg_primary, fg=text_colour)
-        k_entry = tk.Entry(self.master, textvariable=self.k_var,
-                           bg=bg_secondary, disabledbackground=bg_secondary, fg=text_colour, font=(
-                               "Helvetica", 18), width=3)
+        self.k_entry = tk.Entry(self.master, textvariable=self.k_var,
+                                bg=bg_secondary, disabledbackground=bg_secondary, fg=text_colour, font=(
+                                    "Helvetica", 18), width=3)
         k_label.place(relx=0.68, rely=0.80)
-        k_entry.place(relx=0.72, rely=0.80)
-        k_entry.configure(state='disabled')
+        self.k_entry.place(relx=0.72, rely=0.80)
+        self.k_entry.configure(state='disabled')
 
         n_label = tk.Label(self.master, text='N:', font=(
             "Helvetica", 18), bg=bg_primary, fg=text_colour)
-        n_entry = tk.Entry(self.master, textvariable=self.n_var,
-                           bg=bg_secondary, disabledbackground=bg_secondary, fg=text_colour, font=(
-                               "Helvetica", 18), width=3)
+        self.n_entry = tk.Entry(self.master, textvariable=self.n_var,
+                                bg=bg_secondary, disabledbackground=bg_secondary, fg=text_colour, font=(
+                                    "Helvetica", 18), width=3)
         n_label.place(relx=0.78, rely=0.80)
-        n_entry.place(relx=0.82, rely=0.80)
-        n_entry.configure(state='disabled')
+        self.n_entry.place(relx=0.82, rely=0.80)
+        self.n_entry.configure(state='disabled')
 
         self.n_k_btn = tk.Button(self.master, text='OK', font=(
             "Helvetica", 16), bg=green, fg=text_colour, state=tk.DISABLED, command=self.change_n_k)
         self.n_k_btn.place(relx=0.92, rely=0.79)
 
-        quit_btn = tk.Button(self.master, text='QUIT', font=(
-            "Helvetica", 18), bg=red, fg=text_colour, width=12, command=self.quit_prg)
-        quit_btn.place(relx=0.75, rely=0.9)
+        quit_btn = tk.Button(self.master, text='QUIT PROGRAM', font=(
+            "Helvetica", 18), bg=red, fg=text_colour, width=22, command=self.quit_prg)
+        quit_btn.place(relx=0.68, rely=0.9)
 
     def get_basic_info(self):
         """
@@ -209,11 +211,18 @@ class DatabaseUI:
         try:
             raw_data = self.cur.execute(query)
             data = raw_data.fetchall()
+            if len(data) in [0, 1]:
+                messagebox.showerror(
+                    "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
+                )
+                return
             for date, ratio in data:
-                formatted = '{}/{}/{}'.format(date.split('-')[::-1])
+                rev = list(date.split('-'))[::-1]
+                formatted = '{}/{}/{}'.format(*rev)
                 self.dates.append(formatted)
                 self.ratios.append(ratio)
             self.show_dates()
+            self.show_plot()
         except:
             messagebox.showerror(
                 "ERROR", "An error occured. Please run refresh data and retry."
@@ -223,13 +232,32 @@ class DatabaseUI:
         """
         Display the dates in the option menu.
         """
-        pass
+        self.ok.configure(state='normal')
+        self.to_option.configure(state='normal')
+        self.from_option.configure(state='normal')
+        end = len(self.dates) - 1
+        self.from_option['menu'].delete(0, 'end')
+        self.to_option['menu'].delete(0, 'end')
+        for id, date in enumerate(self.dates):
+            if id != end:
+                self.from_option['menu'].add_command(
+                    label=date, command=tk._setit(self.from_var, date))
+            if id:
+                self.to_option['menu'].add_command(
+                    label=date, command=tk._setit(self.to_var, date))
+        self.from_var.set(self.dates[0])
+        self.to_var.set(self.dates[-1])
 
     def show_plot(self):
         """
         Gets the dates and shows the plots.
         """
-        pass
+        from_date = self.from_var.get()
+        to_date = self.to_var.get()
+        from_id = self.dates.index(from_date)
+        to_id = self.dates.index(to_date)
+        labels = self.dates[from_id:to_id + 1]
+        values = self.ratios[from_id:to_id + 1]
 
     def save_plot(self):
         """
@@ -237,26 +265,63 @@ class DatabaseUI:
         """
         pass
 
-    def refresh_data(self):
+    def refresh_data(self, message, n, k):
         """
         Fetch data for the previous 10 days and then refresh the plot.
         """
-        pass
+        if messagebox.askokcancel("ARE YOU SURE?", f"{message} means all the data must be regenerated, the program will then quit and must be restarted."):
+            self.k, self.n = k, n
+            retrieve_data.main(10, self.n, self.k)
+            self.quit_prg()
+        else:
+            self.disable_n_k()
+
+    def enable_n_k(self):
+        """
+        Enable the n and k entry fields.
+        """
+        self.k_entry.configure(state='normal')
+        self.n_entry.configure(state='normal')
+        self.n_k_btn.configure(state='normal')
+
+    def disable_n_k(self):
+        """
+        Resets the entries and disables everything.
+        """
+        self.k_var.set(self.k)
+        self.n_var.set(self.n)
+        self.k_entry.configure(state='disabled')
+        self.n_entry.configure(state='disabled')
+        self.n_k_btn.configure(state='disabled')
 
     def change_n_k(self):
         """
         Change n and k and then fetch the data with the new format.
         """
-        pass
+        k, n = int(self.k_var.get()), int(self.n_var.get())
+        if k == self.k and n == self.n:
+            messagebox.showinfo(
+                "INFO", "You haven't changed K or N!"
+            )
+            self.disable_n_k()
+            return
+        if k >= n:
+            messagebox.showerror(
+                "ERROR", "K must be less than N."
+            )
+            self.disable_n_k()
+            return
+        self.refresh_data("Changing N or K", n, k)
 
     def quit_prg(self):
         """
         Quits the program and closes the connection.
         """
-        pass
+        self.conn.close()
+        sys.exit()
 
 
-def main():
+def main_ui():
     """
     Driver function for the program.
     """
@@ -266,4 +331,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main_ui()
