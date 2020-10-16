@@ -8,6 +8,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.backend_bases import key_press_handler
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+import matplotlib.dates as mdates
 import pandas as pd
 import sys
 import os
@@ -265,22 +266,17 @@ class DatabaseUI:
             return
         from_id = self.dates.index(from_date)
         to_id = self.dates.index(to_date)
-        labels = []
-        for i in range(from_id, to_id + 1):
-            date = self.dates[i][:5].split('/')
-            label_date = '{}-{}'.format(*date)
-            labels.append(label_date)
         values = self.ratios[from_id:to_id + 1]
+        # dates = self.dates[from_id:to_id+1]
+        labels = [f'{date} 12:00:00' for date in self.dates[from_id:to_id+1]]
+        dates = mdates.num2date(mdates.datestr2num(labels))
         self.fig = Figure(figsize=(6.5, 4), dpi=100)
         subplot = self.fig.add_subplot(111)
-        subplot.plot(values, '.-')
-        subplot.set_xticks(range(len(labels)))
-        subplot.set_xticklabels(labels)
-        # subplot.locator_params(axis='x', nbins=8)
-        subplot.set_ylabel('Ratio')
-        subplot.set_xlabel('Dates')
+        subplot.plot(dates, values, '.-')
         title = f'Ratio Line Graph - {self.stock_choice_var.get()}'
         subplot.set_title(title, loc='left')
+        subplot.xaxis_date()
+        self.fig.autofmt_xdate()
         line_plot = FigureCanvasTkAgg(self.fig, self.master)
         line_plot.get_tk_widget().place(relx=0.04, rely=0.12)
         line_plot.draw()
