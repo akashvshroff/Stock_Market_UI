@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import pandas as pd
 import sys
+import os
 
 
 class DatabaseUI:
@@ -23,6 +24,7 @@ class DatabaseUI:
         self.dates = []
         self.ratios = []
         self.n, self.k = None, None
+        self.fig = None
         self.conn = sqlite3.connect(stocks_db)
         self.cur = self.conn.cursor()
         self.fetch_names()
@@ -202,31 +204,33 @@ class DatabaseUI:
         """
         Gets the dates and ratios for a stock.
         """
+        self.ratios = []
+        self.dates = []
         if self.stock_choice_var.get() == 'CHOOSE':
             messagebox.showerror(
                 "ERROR", "Please choose a stock from the list first.")
             return
         name = self.convert_name(self.stock_choice_var.get())
         query = 'SELECT date,ratio from {}'.format(name)
-        try:
-            raw_data = self.cur.execute(query)
-            data = raw_data.fetchall()
-            if len(data) in [0, 1]:
-                messagebox.showerror(
-                    "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
-                )
-                return
-            for date, ratio in data:
-                rev = list(date.split('-'))[::-1]
-                formatted = '{}/{}/{}'.format(*rev)
-                self.dates.append(formatted)
-                self.ratios.append(ratio)
-            self.show_dates()
-            self.show_plot()
-        except:
+        # try:
+        raw_data = self.cur.execute(query)
+        data = raw_data.fetchall()
+        if len(data) in [0, 1]:
             messagebox.showerror(
-                "ERROR", "An error occured. Please run refresh data and retry."
+                "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
             )
+            return
+        for date, ratio in data:
+            rev = list(date.split('-'))[::-1]
+            formatted = '{}/{}/{}'.format(*rev)
+            self.dates.append(formatted)
+            self.ratios.append(ratio)
+        self.show_dates()
+        self.show_plot()
+        # except:
+        #     messagebox.showerror(
+        #         "ERROR", "An error occured. Please run refresh data and retry."
+        #     )
 
     def show_dates(self):
         """
@@ -254,27 +258,81 @@ class DatabaseUI:
         """
         from_date = self.from_var.get()
         to_date = self.to_var.get()
+        if from_date == to_date:
+            messagebox.showerror(
+                'ERROR', 'Start and end date cannot be the same. Change either one.')
+            return
         from_id = self.dates.index(from_date)
         to_id = self.dates.index(to_date)
-        labels = self.dates[from_id:to_id + 1]
+        labels = []
+        for i in range(from_id, to_id + 1):
+            date = self.dates[i][:5].split('/')
+            label_date = '{}-{}'.format(*date)
+            labels.append(label_date)
         values = self.ratios[from_id:to_id + 1]
+        self.fig = Figure(figsize=(6.5, 4), dpi=100)
+        subplot = self.fig.add_subplot(111)
+        subplot.plot(values, '.-')
+        subplot.set_xticks(range(len(labels)))
+        subplot.set_xticklabels(labels)
+        subplot.locator_params(axis='x', nbins=8)
+        subplot.set_ylabel('Ratio')
+        subplot.set_xlabel('Date')
+        # subplot.grid(True, linestyle=':')
+        title = f'Ratio Line Graph - {self.stock_choice_var.get()}'
+        subplot.set_title(title, loc='left')
+        line_plot = FigureCanvasTkAgg(self.fig, self.master)
+        line_plot.get_tk_widget().place(relx=0.04, rely=0.12)
+        line_plot.draw()
+        toolbar = NavigationToolbar2Tk(line_plot, self.master)
+        toolbar.place(relx=0.40, rely=0.13)
 
     def save_plot(self):
         """
         Save the plot that is currently generated.
         """
-        pass
+        if self.fig is None or self.stock_choice_var.get() == 'CHOOSE':
+            messagebox.showerror(
+                'ERROR', 'Generate a plot for a stock first.')
+            return
+        name = self.stock_choice_var.get()
+        from_ = self.from_var.get()
+        to = self.to_var.get()
+        if from_ == to:
+            messagebox.showerror(
+                'ERROR', 'Start and end date cannot be the same. Change either one.')
+            return
+        from_ = ''.join([l if l != '/' else '-' for l in from_])
+        to = ''.join([l if l != '/' else '-' for l in to])
+        path_ = f'{name}_{from_}_{to}.png'
+        file_path = os.path.join(images, path_)
+        self.fig.savefig(file_path)
+        messagebox.showinfo(
+            "SUCCESS", f"Your file has been saved as {file_path} under the saved_plots folder.")
 
     def refresh_data(self, message, n, k):
         """
         Fetch data for the previous 10 days and then refresh the plot.
         """
-        if messagebox.askokcancel("ARE YOU SURE?", f"{message} means all the data must be regenerated, the program will then quit and must be restarted."):
+        if messagebox.askokcancel("ARE YOU SURE?", f"{message} means all the data must be regenerated, the program will inform you when it is done and will be unresponsive (for a few moments) till then."):
             self.k, self.n = k, n
             retrieve_data.main(10, self.n, self.k)
-            self.quit_prg()
+            self.disable_n_k()
+            self.reset_options()
+            messagebox.showinfo(
+                "SUCCESS", "Data has been officially fetched, please select stock again.")
         else:
             self.disable_n_k()
+
+    def reset_options(self):
+        """
+        Resets the stock choice and the dates.
+        """
+        self.stock_choice_var.set('CHOOSE')
+        self.from_option['menu'].delete(0, 'end')
+        self.to_option['menu'].delete(0, 'end')
+        self.to_var.set("END")
+        self.from_var.set("START")
 
     def enable_n_k(self):
         """
