@@ -25,6 +25,7 @@ class DatabaseUI:
         self.stock_names = []
         self.dates = []
         self.ratios = []
+        self.dates_iso = []
         self.n, self.k = None, None
         self.fig = None
         self.conn = sqlite3.connect(stocks_db)
@@ -208,31 +209,33 @@ class DatabaseUI:
         """
         self.ratios = []
         self.dates = []
+        self.dates_iso = []
         if self.stock_choice_var.get() == 'CHOOSE':
             messagebox.showerror(
                 "ERROR", "Please choose a stock from the list first.")
             return
         name = self.convert_name(self.stock_choice_var.get())
         query = 'SELECT date,ratio from {}'.format(name)
-        # try:
-        raw_data = self.cur.execute(query)
-        data = raw_data.fetchall()
-        if len(data) in [0, 1]:
+        try:
+            raw_data = self.cur.execute(query)
+            data = raw_data.fetchall()
+            if len(data) in [0, 1]:
+                messagebox.showerror(
+                    "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
+                )
+                return
+            for date, ratio in data:
+                rev = list(date.split('-'))[::-1]
+                formatted = '{}/{}/{}'.format(*rev)
+                self.dates_iso.append(date)
+                self.dates.append(formatted)
+                self.ratios.append(ratio)
+            self.show_dates()
+            self.show_plot()
+        except:
             messagebox.showerror(
-                "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
+                "ERROR", "An error occured. Please run refresh data and retry."
             )
-            return
-        for date, ratio in data:
-            rev = list(date.split('-'))[::-1]
-            formatted = '{}/{}/{}'.format(*rev)
-            self.dates.append(formatted)
-            self.ratios.append(ratio)
-        self.show_dates()
-        self.show_plot()
-        # except:
-        #     messagebox.showerror(
-        #         "ERROR", "An error occured. Please run refresh data and retry."
-        #     )
 
     def show_dates(self):
         """
@@ -267,15 +270,19 @@ class DatabaseUI:
         from_id = self.dates.index(from_date)
         to_id = self.dates.index(to_date)
         values = self.ratios[from_id:to_id + 1]
-        # dates = self.dates[from_id:to_id+1]
-        labels = [f'{date} 12:00:00' for date in self.dates[from_id:to_id+1]]
+        labels = [
+            f'{date} 12:00:00' for date in self.dates_iso[from_id:to_id+1]]
         dates = mdates.num2date(mdates.datestr2num(labels))
+        # print(values)
+        # print(dates)
+        # print(len(values) == len(dates))
         self.fig = Figure(figsize=(6.5, 4), dpi=100)
         subplot = self.fig.add_subplot(111)
         subplot.plot(dates, values, '.-')
         title = f'Ratio Line Graph - {self.stock_choice_var.get()}'
         subplot.set_title(title, loc='left')
         subplot.xaxis_date()
+        subplot.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
         self.fig.autofmt_xdate()
         line_plot = FigureCanvasTkAgg(self.fig, self.master)
         line_plot.get_tk_widget().place(relx=0.04, rely=0.12)
