@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 import pandas as pd
 import sys
 import os
+import random
 
 
 class DatabaseUI:
@@ -275,10 +276,9 @@ class DatabaseUI:
         subplot.plot(values, '.-')
         subplot.set_xticks(range(len(labels)))
         subplot.set_xticklabels(labels)
-        subplot.locator_params(axis='x', nbins=8)
+        # subplot.locator_params(axis='x', nbins=8)
         subplot.set_ylabel('Ratio')
-        subplot.set_xlabel('Date')
-        # subplot.grid(True, linestyle=':')
+        subplot.set_xlabel('Dates')
         title = f'Ratio Line Graph - {self.stock_choice_var.get()}'
         subplot.set_title(title, loc='left')
         line_plot = FigureCanvasTkAgg(self.fig, self.master)
