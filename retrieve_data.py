@@ -204,5 +204,8 @@ def main(num, n, k, reset):
 
 
 if __name__ == '__main__':
-    num, n, k, reset = 30, 20, 5, False
+    start = time.time()
+    num, n, k, reset = 198, 20, 5, False
     main(num, n, k, reset)
+    end = time.time()
+    print(f'Program ran in {end-start:.2f} seconds.')
