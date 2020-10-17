@@ -204,5 +204,5 @@ def main(num, n, k, reset):
 
 
 if __name__ == '__main__':
-    num, n, k, reset = 10, 20, 5, False
+    num, n, k, reset = 30, 20, 5, False
     main(num, n, k, reset)
