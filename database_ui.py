@@ -1,6 +1,7 @@
 import sqlite3
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import simpledialog
 from file_paths import *
 import retrieve_data
 from colours import *
@@ -201,7 +202,7 @@ class DatabaseUI:
         Read all the stock names from the csv file and then store it in the stock_names list.
         """
         df = pd.read_csv(share_list)
-        self.stock_names = df['NAMES'].values.tolist()
+        self.stock_names = sorted(df['NAMES'].values.tolist())
 
     def get_data(self):
         """
@@ -215,7 +216,7 @@ class DatabaseUI:
                 "ERROR", "Please choose a stock from the list first.")
             return
         name = self.convert_name(self.stock_choice_var.get())
-        query = 'SELECT date,ratio from {}'.format(name)
+        query = 'SELECT date,ratio from {} ORDER BY date ASC'.format(name)
         try:
             raw_data = self.cur.execute(query)
             data = raw_data.fetchall()
@@ -311,17 +312,25 @@ class DatabaseUI:
         messagebox.showinfo(
             "SUCCESS", f"Your file has been saved as {path_} under the saved_plots folder.")
 
+    def show_dialog(self):
+        """
+        Gets user input for number of days to generate input for.
+        """
+        num_days = simpledialog.askinteger(
+            title='Number of days', prompt="Please enter the number of days you would like data to be generated for?")
+        return num_days
+
     def refresh_data(self, message, n, k, reset):
         """
         Fetch data for the previous 10 days and then refresh the plot.
         """
         if not reset:
-            text = f"{message} means all the data must be regenerated, the program will take a few moments, restart and inform you when it is done.."
+            text = f"{message} means all the data must be regenerated, the program will take a few moments, restart and inform you when it is done..."
         else:
             text = f'{message} means all the data must be regenerated and the previous data is all cleared. New data will be generated for a month. The program will restart once the data is fetched.'
         if messagebox.askokcancel("ARE YOU SURE?", text):
             self.k, self.n = k, n
-            num = 10 if not reset else 30
+            num = self.show_dialog()
             self.master.withdraw()
             retrieve_data.main(num, self.n, self.k, reset)
             self.disable_n_k()
@@ -341,8 +350,9 @@ class DatabaseUI:
         self.to_option['menu'].delete(0, 'end')
         self.to_var.set("END")
         self.from_var.set("START")
-        self.fig.set_visible(False)
-        self.line_plot.draw()
+        if self.fig is not None:
+            self.fig.set_visible(False)
+            self.line_plot.draw()
 
     def enable_n_k(self):
         """
