@@ -12,7 +12,6 @@ import matplotlib.dates as mdates
 import pandas as pd
 import sys
 import os
-import random
 
 
 class DatabaseUI:
@@ -119,7 +118,7 @@ class DatabaseUI:
         info_label.place(relx=0.67, rely=0.12)
 
         stocks = tk.Label(self.master, text='STOCKS:',
-                          bg=bg_primary, fg=text_colour, font=("Helvetica", 18))
+                          bg=bg_primary, fg=text_colour, font=("Helvetica", 18, 'bold'))
         stocks.place(relx=0.68, rely=0.49)
 
         self.stock_choice_var = tk.StringVar()
@@ -140,7 +139,7 @@ class DatabaseUI:
         stock_btn.place(relx=0.92, rely=0.56)
 
         stocks = tk.Label(self.master, text='CHANGE K,N:',
-                          bg=bg_primary, fg=text_colour, font=("Helvetica", 18))
+                          bg=bg_primary, fg=text_colour, font=("Helvetica", 18, 'bold'))
         stocks.place(relx=0.68, rely=0.69)
 
         change_btn = tk.Button(self.master, text='EDIT', font=(
