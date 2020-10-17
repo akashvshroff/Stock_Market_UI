@@ -33,3 +33,14 @@
     	k_add += 1
     	self.processed_data.append((stock, dates, avg_n, avg_k))
     ```
+- Another area where I employed a new technique is when writing the data to the sql database, I employed threading so each stock could be handled on its own thread and make the storage faster.
+
+    ```python
+    workers = len(obj.stocks_dict)
+    executor = concurrent.futures.ThreadPoolExecutor(workers)
+    futures = [executor.submit(obj.process_data, item)
+               for item in obj.stocks_dict.items()]
+    concurrent.futures.wait(futures)
+    ```
+
+- This is explained more in depth in the description where I go into the sql schema.
