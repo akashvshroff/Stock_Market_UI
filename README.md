@@ -2,7 +2,7 @@
 
 - A simple GUI application to visualise stock market data that has been scraped from the web, processed and stored using SQL via sqlite. The visualisation is done by embedding matplotlib in tkinter - here is a snapshot of the final GUI.
 
-    ![alt-text]() #IMAGE HERE
+    ![alt-text](https://github.com/akashvshroff/Stock_Market_UI/blob/master/run_time_sample.png) 
 
 - The UI has been designed to be clean and minimal, with pops of colour to add relief.
 - The program effectively calculates a value for each day and then must calculate the ratio of the average of said value over the last k days and over the last n days (where k < n) in order to indicate how this value has grown with respect to the past. It then calculates this ratio for a number of days and displays it as a line graph.
@@ -52,4 +52,8 @@
 - The names of the stocks are obtained from a csv list of shares.
 - The data is parsed from the NSE India site and then parsed using the pandas library and the read_csv method. Data is then processed using the methods mentioned above and inserted into a sqlite table.
 - In the UI end, once the user picks a stock, all the data - for the dates and ratios - from that particular table is fetched and then displayed in a line plot. To properly generate the line plot, the ISO Format date objects are converted to datetime objects which matplotlib uses to tick the data appropriately and ensure that the x-axis labels are not crowded.
+- Since SQL has some guidelines as to naming of fields, any names that are not valid are converted to alphanumeric names.
 - The program allows users to refresh data as well as alter the K and N values (which causes all the data to be deleted and then regenerated).
+- The plot generated can also be saved by the user and is saved in a set name - '{stockname}_{from_date}_{to_date}'
+
+    ![alt-text](https://github.com/akashvshroff/Stock_Market_UI/blob/master/saved_plots/AUBANK_03-09-2020_16-10-2020.png)
