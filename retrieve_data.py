@@ -3,10 +3,8 @@ import pandas as pd
 from datetime import date, timedelta, datetime
 import sqlite3
 from file_paths import *
-from pprint import pprint
 import time
 import threading
-import multiprocessing
 import concurrent.futures
 
 
@@ -87,7 +85,7 @@ class GetData:
         """
         url = self.get_url(date_obj)
         response = requests.get(url, stream=True, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36"
+            "User-Agent": my_user_agent
         })
         if response.status_code == 200:
             return True
@@ -175,18 +173,15 @@ class GetData:
         """
         Store all the data collected in the database.
         """
-        # print(f'{stock}')
         table = self.convert_name(stock)
         err = 0
         if len(avgn) != self.num_days + self.n - 2:
             err = 1
         items = list(zip(dates, avgn, avgk))[::-1]
-        # print(items)
         for date, n, k in items:
             ratio = k / n
             iso_time = self.get_iso(date)
             query = f'INSERT OR IGNORE INTO {table}(date, avgn, avgk, ratio, error_message) VALUES (?,?,?,?,?)'
-            # print(query)
             self.cur.execute(query, (iso_time, n, k, ratio, err,))
 
 
@@ -206,7 +201,6 @@ def main(num, n, k, reset):
     concurrent.futures.wait(futures)
     obj.store_data()
     obj.conn.close()
-    # pprint(obj.processed_data)
 
 
 if __name__ == '__main__':
