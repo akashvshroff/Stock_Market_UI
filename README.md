@@ -44,3 +44,12 @@
     ```
 
 - This is explained more in depth in the description where I go into the sql schema.
+
+### Description:
+
+- Primarily, I want to tackle the SQL schema since it is slightly different from the usual relational schema I like to employ.
+- There are number of stocks and for each stock I maintain a different table since I want to store the date, the averages as well as the ratio - this way each new day can have its own row rather than storing all the stocks in one massive table where each day gets its own column.
+- The names of the stocks are obtained from a csv list of shares.
+- The data is parsed from the NSE India site and then parsed using the pandas library and the read_csv method. Data is then processed using the methods mentioned above and inserted into a sqlite table.
+- In the UI end, once the user picks a stock, all the data - for the dates and ratios - from that particular table is fetched and then displayed in a line plot. To properly generate the line plot, the ISO Format date objects are converted to datetime objects which matplotlib uses to tick the data appropriately and ensure that the x-axis labels are not crowded.
+- The program allows users to refresh data as well as alter the K and N values (which causes all the data to be deleted and then regenerated).
