@@ -28,6 +28,7 @@ class DatabaseUI:
         self.dates_iso = []
         self.n, self.k = None, None
         self.fig = None
+        self.subplot = None
         self.conn = sqlite3.connect(stocks_db)
         self.cur = self.conn.cursor()
         self.fetch_names()
@@ -274,17 +275,18 @@ class DatabaseUI:
             f'{date} 00:00:00' for date in self.dates_iso[from_id:to_id+1]]
         dates = mdates.num2date(mdates.datestr2num(labels))
         self.fig = Figure(figsize=(6.5, 4), dpi=100)
-        subplot = self.fig.add_subplot(111)
-        subplot.plot(dates, values, '.-')
+        self.fig.set_visible(True)
+        self.subplot = self.fig.add_subplot(111)
+        self.subplot.plot(dates, values, '.-')
         title = f'Ratio Line Graph - {self.stock_choice_var.get()}'
-        subplot.set_title(title, loc='left')
-        subplot.xaxis_date()
-        subplot.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
+        self.subplot.set_title(title, loc='left')
+        self.subplot.xaxis_date()
+        self.subplot.xaxis.set_major_formatter(mdates.DateFormatter('%d-%m'))
         self.fig.autofmt_xdate()
-        line_plot = FigureCanvasTkAgg(self.fig, self.master)
-        line_plot.get_tk_widget().place(relx=0.04, rely=0.12)
-        line_plot.draw()
-        toolbar = NavigationToolbar2Tk(line_plot, self.master)
+        self.line_plot = FigureCanvasTkAgg(self.fig, self.master)
+        self.line_plot.get_tk_widget().place(relx=0.04, rely=0.12)
+        self.line_plot.draw()
+        toolbar = NavigationToolbar2Tk(self.line_plot, self.master)
         toolbar.place(relx=0.40, rely=0.13)
 
     def save_plot(self):
@@ -315,15 +317,17 @@ class DatabaseUI:
         Fetch data for the previous 10 days and then refresh the plot.
         """
         if not reset:
-            text = f"{message} means all the data must be regenerated, the program will inform you when it is done and will be unresponsive (for a few moments) till then."
+            text = f"{message} means all the data must be regenerated, the program will take a few moments, restart and inform you when it is done.."
         else:
-            text = f'{message} means all the data must be regenerated and the previous data is all cleared. New data will be generated for a month.'
+            text = f'{message} means all the data must be regenerated and the previous data is all cleared. New data will be generated for a month. The program will restart once the data is fetched.'
         if messagebox.askokcancel("ARE YOU SURE?", text):
             self.k, self.n = k, n
             num = 10 if not reset else 30
+            self.master.withdraw()
             retrieve_data.main(num, self.n, self.k, reset)
             self.disable_n_k()
             self.reset_options()
+            self.master.deiconify()
             messagebox.showinfo(
                 "SUCCESS", "Data has been officially fetched, please select stock again.")
         else:
@@ -338,6 +342,8 @@ class DatabaseUI:
         self.to_option['menu'].delete(0, 'end')
         self.to_var.set("END")
         self.from_var.set("START")
+        self.fig.set_visible(False)
+        self.line_plot.draw()
 
     def enable_n_k(self):
         """
