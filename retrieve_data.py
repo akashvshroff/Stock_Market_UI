@@ -21,8 +21,9 @@ class GetData:
         self.stocks_dict = {}  # stock name -> daily value list
         self.processed_data = []  # holds all the info for each stock as a tuple
         self.dates_used = []  # dates for which data has been used
+        self.conn = sqlite3.connect(stocks_db)
+        self.cur = self.conn.cursor()
         self.get_stock_names()
-        self.initialise_db()
 
     def get_stock_names(self):
         """
@@ -48,12 +49,18 @@ class GetData:
         """
         return date_obj.isoformat()
 
+    def reset_db(self):
+        """
+        Drops all existing tables.
+        """
+        for stock in self.stocks_dict.keys():
+            query = f'DROP TABLE IF EXISTS {self.convert_name(stock)}'
+            self.cur.execute(query)
+
     def initialise_db(self):
         """
         Connect to the database and create the table.
         """
-        self.conn = sqlite3.connect(stocks_db)
-        self.cur = self.conn.cursor()
         self.cur.execute(
             "CREATE TABLE IF NOT EXISTS info (id INTEGER PRIMARY KEY UNIQUE, n INTEGER, k INTEGER)")
         self.cur.execute(
@@ -183,11 +190,14 @@ class GetData:
             self.cur.execute(query, (iso_time, n, k, ratio, err,))
 
 
-def main(num, n, k):
+def main(num, n, k, reset):
     """
     Driver function for the program.
     """
-    obj = GetData(num+1, n, k)
+    obj = GetData(num + 1, n, k)
+    if reset:
+        obj.reset_db()
+    obj.initialise_db()
     obj.get_dates()
     workers = len(obj.stocks_dict)
     executor = concurrent.futures.ThreadPoolExecutor(workers)
@@ -200,5 +210,5 @@ def main(num, n, k):
 
 
 if __name__ == '__main__':
-    num, n, k = 10, 20, 5
-    main(num, n, k)
+    num, n, k, reset = 10, 20, 5, False
+    main(num, n, k, reset)
