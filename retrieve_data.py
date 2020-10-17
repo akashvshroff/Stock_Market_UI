@@ -185,7 +185,7 @@ class GetData:
         for date, n, k in items:
             ratio = k / n
             iso_time = self.get_iso(date)
-            query = f'INSERT OR REPLACE INTO {table}(date, avgn, avgk, ratio, error_message) VALUES (?,?,?,?,?)'
+            query = f'INSERT OR IGNORE INTO {table}(date, avgn, avgk, ratio, error_message) VALUES (?,?,?,?,?)'
             # print(query)
             self.cur.execute(query, (iso_time, n, k, ratio, err,))
 
