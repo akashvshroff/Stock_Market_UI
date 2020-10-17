@@ -309,7 +309,7 @@ class DatabaseUI:
         file_path = os.path.join(images, path_)
         self.fig.savefig(file_path)
         messagebox.showinfo(
-            "SUCCESS", f"Your file has been saved as {file_path} under the saved_plots folder.")
+            "SUCCESS", f"Your file has been saved as {path_} under the saved_plots folder.")
 
     def refresh_data(self, message, n, k, reset):
         """
