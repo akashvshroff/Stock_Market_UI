@@ -97,7 +97,7 @@ class DatabaseUI:
         save_plot_btn.place(relx=0.04, rely=0.9)
 
         refresh_btn = tk.Button(self.master, text='REFRESH DATA', font=(
-            "Helvetica", 18,), bg=red, fg=text_colour, width=22, command=lambda: self.refresh_data("Refreshing data", self.n, self.k))
+            "Helvetica", 18,), bg=red, fg=text_colour, width=22, command=lambda: self.refresh_data("Refreshing data", self.n, self.k, False))
         refresh_btn.place(relx=0.34, rely=0.9)
 
         # Separator
@@ -271,11 +271,8 @@ class DatabaseUI:
         to_id = self.dates.index(to_date)
         values = self.ratios[from_id:to_id + 1]
         labels = [
-            f'{date} 12:00:00' for date in self.dates_iso[from_id:to_id+1]]
+            f'{date} 00:00:00' for date in self.dates_iso[from_id:to_id+1]]
         dates = mdates.num2date(mdates.datestr2num(labels))
-        # print(values)
-        # print(dates)
-        # print(len(values) == len(dates))
         self.fig = Figure(figsize=(6.5, 4), dpi=100)
         subplot = self.fig.add_subplot(111)
         subplot.plot(dates, values, '.-')
@@ -313,13 +310,18 @@ class DatabaseUI:
         messagebox.showinfo(
             "SUCCESS", f"Your file has been saved as {file_path} under the saved_plots folder.")
 
-    def refresh_data(self, message, n, k):
+    def refresh_data(self, message, n, k, reset):
         """
         Fetch data for the previous 10 days and then refresh the plot.
         """
-        if messagebox.askokcancel("ARE YOU SURE?", f"{message} means all the data must be regenerated, the program will inform you when it is done and will be unresponsive (for a few moments) till then."):
+        if not reset:
+            text = f"{message} means all the data must be regenerated, the program will inform you when it is done and will be unresponsive (for a few moments) till then."
+        else:
+            text = f'{message} means all the data must be regenerated and the previous data is all cleared. New data will be generated for a month.'
+        if messagebox.askokcancel("ARE YOU SURE?", text):
             self.k, self.n = k, n
-            retrieve_data.main(10, self.n, self.k)
+            num = 10 if not reset else 30
+            retrieve_data.main(num, self.n, self.k, reset)
             self.disable_n_k()
             self.reset_options()
             messagebox.showinfo(
@@ -372,7 +374,7 @@ class DatabaseUI:
             )
             self.disable_n_k()
             return
-        self.refresh_data("Changing N or K", n, k)
+        self.refresh_data("Changing N or K", n, k, True)
 
     def quit_prg(self):
         """
