@@ -233,7 +233,9 @@ class DatabaseUI:
                 self.ratios.append(ratio)
             self.show_dates()
             self.show_plot()
-        except:
+        except Exception as e:
+            with open(exception_file, 'a') as f:
+                f.write(e)
             messagebox.showerror(
                 "ERROR", "An error occured. Please run refresh data and retry."
             )
