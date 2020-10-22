@@ -272,6 +272,10 @@ class DatabaseUI:
             return
         from_id = self.dates.index(from_date)
         to_id = self.dates.index(to_date)
+        if from_id >= to_id:
+            messagebox.showerror(
+                'ERROR', 'Start date cannot be greater than end. Change either one.')
+            return
         values = self.ratios[from_id:to_id + 1]
         labels = [
             f'{date} 00:00:00' for date in self.dates_iso[from_id:to_id+1]]
