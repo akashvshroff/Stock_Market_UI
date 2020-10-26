@@ -333,7 +333,7 @@ class DatabaseUI:
         if not reset:
             text = f"{message} means all the data must be regenerated, the program will take a few moments, restart and inform you when it is done..."
         else:
-            text = f'{message} means all the data must be regenerated and the previous data is all cleared. New data will be generated for a month. The program will restart once the data is fetched.'
+            text = f'{message} means all the data must be regenerated and the previous data is all cleared. New data will be generated. The program will restart once the data is fetched.'
         if messagebox.askokcancel("ARE YOU SURE?", text):
             self.k, self.n = k, n
             num = self.show_dialog()
