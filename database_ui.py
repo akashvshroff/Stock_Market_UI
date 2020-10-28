@@ -66,8 +66,8 @@ class DatabaseUI:
         self.from_entry.place(relx=0.04, rely=0.81)
 
         to = tk.Label(self.master, text='TO', width=8, font=(
-            "Helvetica", 19,), fg=text_colour, bg=bg_primary)
-        to.place(relx=0.21, rely=0.81)
+            "Helvetica", 20,), fg=text_colour, bg=bg_primary)
+        to.place(relx=0.22, rely=0.80)
 
         self.to_var = tk.StringVar(self.master)
         self.to_var.set('DD/MM/YYYY')
@@ -207,18 +207,18 @@ class DatabaseUI:
             raw_data = self.cur.execute(query)
             data = raw_data.fetchall()
             if len(data) in [0, 1]:
-                    messagebox.showerror(
-                        "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
-                    )
-                    return
-                for date, ratio in data:
-                    rev = list(date.split('-'))[::-1]
-                    formatted = '{}/{}/{}'.format(*rev)
-                    self.dates_iso.append(date)
-                    self.dates.append(formatted)
-                    self.ratios.append(ratio)
-                self.show_dates()
-                self.show_plot()
+                messagebox.showerror(
+                    "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
+                )
+                return
+            for date, ratio in data:
+                rev = list(date.split('-'))[::-1]
+                formatted = '{}/{}/{}'.format(*rev)
+                self.dates_iso.append(date)
+                self.dates.append(formatted)
+                self.ratios.append(ratio)
+            self.show_dates()
+            self.show_plot()
         except Exception as e:
             with open(exception_file, 'a') as f:
                 f.write(str(e))
