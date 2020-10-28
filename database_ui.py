@@ -13,6 +13,7 @@ import matplotlib.dates as mdates
 import pandas as pd
 import sys
 import os
+import re
 
 
 class DatabaseUI:
@@ -59,35 +60,20 @@ class DatabaseUI:
         self.canvas_plot.place(relx=0.04, rely=0.12)
 
         self.from_var = tk.StringVar(self.master)
-        self.from_var.set('START')
-        self.from_option = tk.OptionMenu(
-            self.master, self.from_var, '')
-        self.from_option.config(bg=bg_secondary)
-        self.from_option.config(fg=text_colour)
-        self.from_option.config(width=14)
-        self.from_option.config(activebackground=bg_secondary)
-        self.from_option.config(highlightthickness=0)
-        self.from_option.config(activeforeground=text_colour)
-        self.from_option.config(font=("Helvetica", 18,))
-        self.from_option.place(relx=0.04, rely=0.81)
-        self.from_option.configure(state='disabled')
+        self.from_var.set('DD/MM/YYYY')
+        self.from_entry = tk.Entry(
+            self.master, textvariable=self.from_var, insertbackground=text_colour, bg=bg_secondary, fg=text_colour, width=13, font=("Helvetica", 19,))
+        self.from_entry.place(relx=0.04, rely=0.81)
 
         to = tk.Label(self.master, text='TO', width=8, font=(
-            "Helvetica", 18,), fg=text_colour, bg=bg_primary)
-        to.place(relx=0.25, rely=0.82)
+            "Helvetica", 19,), fg=text_colour, bg=bg_primary)
+        to.place(relx=0.21, rely=0.81)
 
         self.to_var = tk.StringVar(self.master)
-        self.to_var.set('END')
-        self.to_option = tk.OptionMenu(self.master, self.to_var, '')
-        self.to_option.config(bg=bg_secondary)
-        self.to_option.config(fg=text_colour)
-        self.to_option.config(width=14)
-        self.to_option.config(activebackground=bg_secondary)
-        self.to_option.config(highlightthickness=0)
-        self.to_option.config(activeforeground=text_colour)
-        self.to_option.config(font=("Helvetica", 18,))
-        self.to_option.place(relx=0.36, rely=0.81)
-        self.to_option.configure(state='disabled')
+        self.to_var.set('DD/MM/YYYY')
+        self.to_entry = tk.Entry(self.master, textvariable=self.to_var,
+                                 bg=bg_secondary, insertbackground=text_colour,  fg=text_colour, width=13, font=("Helvetica", 19,))
+        self.to_entry.place(relx=0.36, rely=0.81)
 
         self.ok = tk.Button(self.master, text='OK', font=(
             "Helvetica", 18,), bg=green, fg=text_colour, state=tk.DISABLED, command=self.show_plot)
@@ -221,21 +207,21 @@ class DatabaseUI:
             raw_data = self.cur.execute(query)
             data = raw_data.fetchall()
             if len(data) in [0, 1]:
-                messagebox.showerror(
-                    "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
-                )
-                return
-            for date, ratio in data:
-                rev = list(date.split('-'))[::-1]
-                formatted = '{}/{}/{}'.format(*rev)
-                self.dates_iso.append(date)
-                self.dates.append(formatted)
-                self.ratios.append(ratio)
-            self.show_dates()
-            self.show_plot()
+                    messagebox.showerror(
+                        "ERROR", "No data exists for this stock. Please run refresh data and retry or choose another."
+                    )
+                    return
+                for date, ratio in data:
+                    rev = list(date.split('-'))[::-1]
+                    formatted = '{}/{}/{}'.format(*rev)
+                    self.dates_iso.append(date)
+                    self.dates.append(formatted)
+                    self.ratios.append(ratio)
+                self.show_dates()
+                self.show_plot()
         except Exception as e:
             with open(exception_file, 'a') as f:
-                f.write(e)
+                f.write(str(e))
             messagebox.showerror(
                 "ERROR", "An error occured. Please run refresh data and retry."
             )
@@ -245,20 +231,36 @@ class DatabaseUI:
         Display the dates in the option menu.
         """
         self.ok.configure(state='normal')
-        self.to_option.configure(state='normal')
-        self.from_option.configure(state='normal')
-        end = len(self.dates) - 1
-        self.from_option['menu'].delete(0, 'end')
-        self.to_option['menu'].delete(0, 'end')
-        for id, date in enumerate(self.dates):
-            if id != end:
-                self.from_option['menu'].add_command(
-                    label=date, command=tk._setit(self.from_var, date))
-            if id:
-                self.to_option['menu'].add_command(
-                    label=date, command=tk._setit(self.to_var, date))
         self.from_var.set(self.dates[0])
         self.to_var.set(self.dates[-1])
+
+    def validate_input(self, date_):
+        """
+        Return true if date is valid else false
+        """
+        return re.search(r'\d\d/\d\d/\d\d\d\d', date_)
+
+    def get_date_id(self, from_, to_):
+        """
+        Get the string values of the from and to date option and return 2 integers.
+        """
+        f = reversed(from_.split('/'))
+        t = reversed(to_.split('/'))
+        fr = '{}-{}-{}'.format(*f)
+        to = '{}-{}-{}'.format(*t)
+        fr_id, to_id = None, None
+        if fr in self.dates_iso:
+            fr_id = self.dates_iso.index(fr)
+        if to in self.dates_iso:
+            to_id = self.dates_iso.index(to)
+        for id, date in enumerate(self.dates_iso):
+            if fr_id is None:
+                if fr < date:
+                    fr_id = id
+            if to_id is None:
+                if to > date:
+                    to_id = id
+        return fr_id, to_id
 
     def show_plot(self):
         """
@@ -270,8 +272,19 @@ class DatabaseUI:
             messagebox.showerror(
                 'ERROR', 'Start and end date cannot be the same. Change either one.')
             return
-        from_id = self.dates.index(from_date)
-        to_id = self.dates.index(to_date)
+        if not self.validate_input(from_date) or not self.validate_input(to_date):
+            messagebox.showerror(
+                'ERROR', 'Incorrect format, please enter dates as DD/MM/YYYY.')
+            return
+        from_id, to_id = self.get_date_id(from_date, to_date)
+        if from_id is None:
+            messagebox.showerror(
+                'ERROR', 'Starting date is larger than all stored dates.')
+            return
+        if to_id is None:
+            messagebox.showerror(
+                'ERROR', 'Ending date is smaller than all stored dates.')
+            return
         if from_id >= to_id:
             messagebox.showerror(
                 'ERROR', 'Start date cannot be greater than end. Change either one.')
@@ -352,10 +365,10 @@ class DatabaseUI:
         Resets the stock choice and the dates.
         """
         self.stock_choice_var.set('CHOOSE')
-        self.from_option['menu'].delete(0, 'end')
-        self.to_option['menu'].delete(0, 'end')
-        self.to_var.set("END")
-        self.from_var.set("START")
+        # self.from_option['menu'].delete(0, 'end')
+        # self.to_option['menu'].delete(0, 'end')
+        self.to_var.set("DD/MM/YYYY")
+        self.from_var.set("DD/MM/YYYY")
         if self.fig is not None:
             self.fig.set_visible(False)
             self.line_plot.draw()
